@@ -73,7 +73,6 @@ def get_top_inviters(limit: int = 20) -> dict:
             .group_by(InvitedUser.inviter_user_id)
             .subquery()
         )
-
         # Join with InviteLink to attempt to get inviter's username; use coalesce for fallback
         inviters = (
             session.query(
@@ -92,7 +91,6 @@ def get_top_inviters(limit: int = 20) -> dict:
             .limit(limit)
             .all()
         )
-
-        # Convert to dict: {username: invite_count}
-        result = {inviter.username: inviter.invite_count for inviter in inviters}
+        # Convert to dict: {username: (inviter_user_id, invite_count)}
+        result = {inviter.username: (inviter.inviter_user_id, inviter.invite_count) for inviter in inviters}
         return result

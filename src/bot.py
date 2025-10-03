@@ -5,6 +5,7 @@ from pathlib import Path
 
 import aiogram.exceptions
 from aiogram import Bot, Dispatcher, F, types
+from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.fsm.storage.memory import MemoryStorage
 from dotenv import load_dotenv
@@ -73,8 +74,8 @@ async def my_stats_handler(message: types.Message):
                 f"Вы пригласили человек: {invite_count}\n"
                 f"Последние приглашённые:\n")
     for user_counter in range(len(recent_invited)):
-        response += f"{user_counter+1}. @{recent_invited[user_counter][1]}\n"
-    await message.answer(response)
+        response += f"{user_counter+1}. <a href='tg://openmessage?user_id={recent_invited[user_counter][0]}'>{recent_invited[user_counter][1]}</a>\n"
+    await message.answer(response, parse_mode=ParseMode.HTML)
     logger.info(f"Processed /my_stats for user @{username} (ID: {inviter_user_id}): {invite_count} invited, "
                 f"{len(recent_invited)} recent users")
 
@@ -85,9 +86,11 @@ async def invites_rating_handler(message: types.Message):
     result = "🔗 Топ 20 игроков по приглашениям:\n\n"
     count = 1
     for inviter in inviters:
-        result += f"{count}. {inviter} - {inviters[inviter]}🤵🏻\n"
+        result += (f"{count}. <a href='tg://openmessage?user_id={inviters[inviter][0]}'>{inviter}</a> "
+                   f"- {inviters[inviter][1]}🤵🏻\n")
         count += 1
-    await message.answer(result)
+    await message.answer(result, parse_mode=ParseMode.HTML)
+    logger.info(f"Successfully processed /invites_rating. Called {message.from_user.username} (ID: {message.from_user.id}).")
 
 
 @dp.chat_member()

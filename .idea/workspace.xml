@@ -4,9 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="59e277f8-003b-446b-9f7f-5b0a93fa2834" name="Changes" comment="First commit">
+    <list default="true" id="59e277f8-003b-446b-9f7f-5b0a93fa2834" name="Changes" comment="BUGFIX. Made top inviters count right.">
       <change afterPath="$PROJECT_DIR$/config/dev.env" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/TGrefferal.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/TGrefferal.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/bot.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/bot.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/db.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/db.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -24,6 +27,18 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
+  "lastFilter": {
+    "state": "OPEN",
+    "assignee": "TARFASH"
+  }
+}]]></component>
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/TARFASH/TGreferral.git",
+    "accountId": "b5d0e8a4-12be-4ec6-b5ab-c9d43d669b81"
+  }
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 4
 }</component>
@@ -171,7 +186,7 @@
       <workItem from="1759378961556" duration="830000" />
       <workItem from="1759385196552" duration="4475000" />
       <workItem from="1759462309066" duration="1437000" />
-      <workItem from="1759464080915" duration="159000" />
+      <workItem from="1759464080915" duration="2237000" />
     </task>
     <task id="LOCAL-00001" summary="First commit">
       <option name="closed" value="true" />
@@ -181,7 +196,23 @@
       <option name="project" value="LOCAL" />
       <updated>1759463729501</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="BUGFIX. Made top inviters count right.">
+      <option name="closed" value="true" />
+      <created>1759464286900</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1759464286900</updated>
+    </task>
+    <task id="LOCAL-00003" summary="BUGFIX. Made top inviters count right.">
+      <option name="closed" value="true" />
+      <created>1759464292989</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1759464292989</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -189,10 +220,12 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="First commit" />
-    <option name="LAST_COMMIT_MESSAGE" value="First commit" />
+    <MESSAGE value="BUGFIX. Made top inviters count right." />
+    <option name="LAST_COMMIT_MESSAGE" value="BUGFIX. Made top inviters count right." />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/TGrefferal$bot.coverage" NAME="bot Coverage Results" MODIFIED="1759463355928" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
     <SUITE FILE_PATH="coverage/TGrefferal$migrate.coverage" NAME="migrate Coverage Results" MODIFIED="1759205924838" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/TGreferral$bot.coverage" NAME="bot Coverage Results" MODIFIED="1759466116829" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
   </component>
 </project>
