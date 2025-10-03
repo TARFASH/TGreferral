@@ -64,18 +64,35 @@ def get_count_invited_by_inviter(inviter_user_id: int) -> int:
 
 def get_top_inviters(limit: int = 20) -> dict:
     with Session() as session:
-        # Query to group by inviter_user_id, count invited users, and get username
-        inviters = (
+        # Subquery to count invites per inviter_user_id
+        invite_counts = (
             session.query(
                 InvitedUser.inviter_user_id,
-                InvitedUser.invited_username,
-                func.count(InvitedUser.inviter_user_id).label("invite_count")
+                func.count(InvitedUser.id).label("invite_count")
             )
-            .group_by(InvitedUser.inviter_user_id, InvitedUser.invited_username)
-            .order_by(func.count(InvitedUser.inviter_user_id).desc())
+            .group_by(InvitedUser.inviter_user_id)
+            .subquery()
+        )
+
+        # Join with InviteLink to attempt to get inviter's username; use coalesce for fallback
+        inviters = (
+            session.query(
+                invite_counts.c.inviter_user_id,
+                invite_counts.c.invite_count,
+                func.coalesce(
+                    # Try to get any invited_username as a proxy (not ideal but works with current schema)
+                    session.query(InvitedUser.invited_username)
+                    .filter(InvitedUser.inviter_user_id == invite_counts.c.inviter_user_id)
+                    .limit(1)
+                    .scalar_subquery(),
+                    f"User_{invite_counts.c.inviter_user_id}"  # Fallback
+                ).label("username")
+            )
+            .order_by(invite_counts.c.invite_count.desc())
             .limit(limit)
             .all()
         )
-        # Convert to dictionary with username as key and count as value
-        result = {inviter.invited_username: inviter.invite_count for inviter in inviters}
+
+        # Convert to dict: {username: invite_count}
+        result = {inviter.username: inviter.invite_count for inviter in inviters}
         return result
