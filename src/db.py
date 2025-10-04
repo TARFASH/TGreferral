@@ -121,34 +121,25 @@ def calculate_debt(user_id: int) -> str:
     }
     invite_count = get_count_invited_by_inviter(user_id)
     progress = get_reward_progress(user_id)
-    issued = progress["issued_milestones"]  # Это уже список из get_reward_progress
+    issued = progress["issued_milestones"]
     debt = []
     total_rewards = [0, 0]
-
-    # Проверяем, есть ли долг по наградам
-    if invite_count < 3 or (invite_count < 20 and invite_count <= max(issued + [0])):
+    if invite_count < 3:
         return "Долгов нет."
-
-    # Проверяем награды до 15 приглашений
-    if invite_count <= 15:
-        for i in range(3, 19, 3):
-            if i <= invite_count and i not in issued:
-                debt.append(f"- {rewards[i][0]}: {rewards[i][1]} 🌸")
+    for i in [3, 6, 9, 12, 15, 20]:
+        if i <= invite_count and i not in issued:
+            if i < 20:
+                debt.append(f"- {rewards[i][0]}: {rewards[i][1]}🌸")
                 total_rewards[0] += rewards[i][1]
-
-    # Проверяем награду за 20 приглашений
-    if invite_count >= 20 and 20 not in issued:
-        debt.append(f"- {rewards[20][0]}: {rewards[20][1]} 🌸; {rewards[20][2]} 💰; {rewards[20][3]}\n")
-        total_rewards[0] += rewards[20][1]
-        total_rewards[1] += rewards[20][2]
-        total_rewards.append(rewards[20][3])
-
-    # Проверяем дополнительные награды за приглашения сверх 20
+            elif i == 20:
+                debt.append(f"- {rewards[20][0]}: {rewards[20][1]}🌸; {rewards[20][2]}💰; {rewards[20][3]}\n")
+                total_rewards[0] += rewards[20][1]
+                total_rewards[1] += rewards[20][2]
+                total_rewards.append(rewards[20][3])
     extra = max(0, invite_count - 20 - progress['rewarded_extra']) * 100000
     if extra > 0:
-        debt.append(f"- Доп. приглашения: {extra} 💰\n")
+        debt.append(f"- Доп. приглашения: {extra}💰\n")
         total_rewards[1] += extra
-
     if not debt:
         return "Долгов нет."
-    return f"Долг по наградам:\n" + "\n".join(debt)
+    return f"Долг по наградам:\n" + "\n".join(debt) + f"\n\nИтого: {total_rewards[0]}🌸; {total_rewards[1]}💰; {total_rewards[2] if total_rewards[2] else ''}"
