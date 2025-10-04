@@ -11,7 +11,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from dotenv import load_dotenv
 
 from src.db import save_invite_link, get_invite_link_by_url, save_invited_user, get_recent_invited_users_by_inviter, \
-    get_count_invited_by_inviter, get_top_inviters
+    get_count_invited_by_inviter, get_top_inviters, calculate_debt
 from src.filters import is_target_chat
 
 # Configure logging
@@ -45,7 +45,7 @@ async def get_link_handler(message: types.Message):
     try:
         user_id = message.from_user.id
         username = message.from_user.username or message.from_user.first_name
-        existing_link = save_invite_link(user_id=user_id, invite_link=None)
+        existing_link = save_invite_link(user_id=user_id, invite_link=None, username=username)
         if existing_link and existing_link != "":
             await message.answer(f"Твоя ссылка для приглашения в чат:\n{existing_link}")
             logger.info(f"Retrieved existing invite link for user {username} (ID: {user_id}): {existing_link}")
@@ -56,7 +56,7 @@ async def get_link_handler(message: types.Message):
             expire_date=None,
             member_limit=None
         )
-        saved_link = save_invite_link(user_id=user_id, invite_link=invite_link.invite_link)
+        saved_link = save_invite_link(user_id=user_id, invite_link=invite_link.invite_link, username=username)
         await message.answer(f"Вот твоя ссылка для приглашения в чат:\n{saved_link}")
         logger.info(f"Generated invite link for user @{username} (ID: {user_id}): {saved_link}")
     except aiogram.exceptions.TelegramBadRequest:
@@ -92,6 +92,39 @@ async def invites_rating_handler(message: types.Message):
     await message.answer(result, parse_mode=ParseMode.HTML)
     logger.info(f"Successfully processed /invites_rating. Called {message.from_user.username} (ID: {message.from_user.id}).")
 
+
+# Admin-only command to check debt as a reply
+@dp.message(Command("check_debt"), F.reply_to_message)
+async def check_debt_handler(message: types.Message):
+    if not await is_target_chat(message=message):
+        return
+
+    # Check if the user is an admin
+    try:
+        admins = await bot.get_chat_administrators(chat_id=CHAT_ID)
+        admin_ids = [admin.user.id for admin in admins]
+        if message.from_user.id not in admin_ids:
+            await message.answer("Эта команда доступна только администраторам чата!")
+            logger.info(f"Non-admin @{message.from_user.username} (ID: {message.from_user.id}) attempted /check_debt")
+            return
+    except aiogram.exceptions.TelegramBadRequest as e:
+        await message.answer("Ошибка: убедитесь, что бот имеет права администратора!")
+        logger.error(f"Failed to check admin status: {e}")
+        return
+
+    # Get the replied-to user's ID
+    target_user = message.reply_to_message.from_user
+    target_user_id = target_user.id
+    target_username = target_user.username or target_user.first_name
+
+    # Check if the target user exists in the database
+    invite_count = get_count_invited_by_inviter(target_user_id)
+    debt = calculate_debt(target_user_id)
+
+    response = f"📊 Долг по наградам для @{target_username} (ID: {target_user_id}):\n{debt}"
+    await message.answer(response, parse_mode=ParseMode.HTML)
+    logger.info(f"Processed /check_debt for user @{target_username} (ID: {target_user_id}) by admin "
+                f"@{message.from_user.username} (ID: {message.from_user.id}): {invite_count} invited")
 
 @dp.chat_member()
 async def chat_member_handler(update: types.ChatMemberUpdated):

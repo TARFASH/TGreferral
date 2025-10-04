@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, func
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
@@ -13,6 +13,7 @@ class InviteLink(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, nullable=False, unique=True)
     invite_link = Column(String)
+    username = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class InvitedUser(Base):
@@ -23,16 +24,24 @@ class InvitedUser(Base):
     invited_username = Column(String, nullable=False)
     joined_at = Column(DateTime, default=datetime.utcnow)
 
+class RewardProgress(Base):
+    __tablename__ = "rewards_progress"
+    user_id = Column(Integer, ForeignKey("invite_links.user_id"), primary_key=True)
+    issued_milestones = Column(String, default="")
+    rewarded_extra = Column(Integer, default=0)
+    updated_at = Column(DateTime, default=datetime.utcnow)
+
 Base.metadata.create_all(engine)
 
-def save_invite_link(user_id: int, invite_link: str=None) -> str:
+def save_invite_link(user_id: int, invite_link: str = None, username: str = None) -> str:
     with Session() as session:
         existing_link = session.query(InviteLink).filter_by(user_id=user_id).first()
         if existing_link:
             return str(existing_link.invite_link)
         if invite_link and invite_link != "":
-            new_link = InviteLink(user_id=user_id, invite_link=invite_link)
+            new_link = InviteLink(user_id=user_id, invite_link=invite_link, username=username)
             session.add(new_link)
+            session.add(RewardProgress(user_id=user_id))
             session.commit()
         return invite_link
 
@@ -64,7 +73,6 @@ def get_count_invited_by_inviter(inviter_user_id: int) -> int:
 
 def get_top_inviters(limit: int = 20) -> dict:
     with Session() as session:
-        # Subquery to count invites per inviter_user_id
         invite_counts = (
             session.query(
                 InvitedUser.inviter_user_id,
@@ -73,16 +81,13 @@ def get_top_inviters(limit: int = 20) -> dict:
             .group_by(InvitedUser.inviter_user_id)
             .subquery()
         )
-        # Join with InviteLink to attempt to get inviter's username; use coalesce for fallback
         inviters = (
             session.query(
                 invite_counts.c.inviter_user_id,
                 invite_counts.c.invite_count,
                 func.coalesce(
-                    # Try to get any invited_username as a proxy (not ideal but works with current schema)
-                    session.query(InvitedUser.invited_username)
-                    .filter(InvitedUser.inviter_user_id == invite_counts.c.inviter_user_id)
-                    .limit(1)
+                    session.query(InviteLink.username)
+                    .filter(InviteLink.user_id == invite_counts.c.inviter_user_id)
                     .scalar_subquery(),
                     f"User_{invite_counts.c.inviter_user_id}"  # Fallback
                 ).label("username")
@@ -91,6 +96,59 @@ def get_top_inviters(limit: int = 20) -> dict:
             .limit(limit)
             .all()
         )
-        # Convert to dict: {username: (inviter_user_id, invite_count)}
         result = {inviter.username: (inviter.inviter_user_id, inviter.invite_count) for inviter in inviters}
         return result
+
+
+def get_reward_progress(user_id: int) -> dict:
+    with Session() as session:
+        progress = session.query(RewardProgress).filter_by(user_id=user_id).first()
+        if progress is None:
+            # Return default progress if no record exists
+            return {"issued_milestones": [], "rewarded_extra": 0}
+        milestones = [int(m) for m in progress.issued_milestones.split(",") if m]
+        return {"issued_milestones": milestones, "rewarded_extra": progress.rewarded_extra}
+
+
+def calculate_debt(user_id: int) -> str:
+    rewards = {
+        3: ("1. Коммуникативный 🤝", 150),
+        6: ("2. Сетевой магнит 👥", 300),
+        9: ("3. Мастер связей 🔗", 450),
+        12: ("4. Проводник 🌟", 600),
+        15: ("5. Социальная Легенда 🏆", 750),
+        20: ("6. Работорговец 💀", 1000, 1700000, "VIP-статус 💎")
+    }
+    invite_count = get_count_invited_by_inviter(user_id)
+    progress = get_reward_progress(user_id)
+    issued = progress["issued_milestones"]  # Это уже список из get_reward_progress
+    debt = []
+    total_rewards = [0, 0]
+
+    # Проверяем, есть ли долг по наградам
+    if invite_count < 3 or (invite_count < 20 and invite_count <= max(issued + [0])):
+        return "Долгов нет."
+
+    # Проверяем награды до 15 приглашений
+    if invite_count <= 15:
+        for i in range(3, 19, 3):
+            if i <= invite_count and i not in issued:
+                debt.append(f"- {rewards[i][0]}: {rewards[i][1]} 🌸")
+                total_rewards[0] += rewards[i][1]
+
+    # Проверяем награду за 20 приглашений
+    if invite_count >= 20 and 20 not in issued:
+        debt.append(f"- {rewards[20][0]}: {rewards[20][1]} 🌸; {rewards[20][2]} 💰; {rewards[20][3]}\n")
+        total_rewards[0] += rewards[20][1]
+        total_rewards[1] += rewards[20][2]
+        total_rewards.append(rewards[20][3])
+
+    # Проверяем дополнительные награды за приглашения сверх 20
+    extra = max(0, invite_count - 20 - progress['rewarded_extra']) * 100000
+    if extra > 0:
+        debt.append(f"- Доп. приглашения: {extra} 💰\n")
+        total_rewards[1] += extra
+
+    if not debt:
+        return "Долгов нет."
+    return f"Долг по наградам:\n" + "\n".join(debt)
