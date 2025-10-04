@@ -112,18 +112,18 @@ def get_reward_progress(user_id: int) -> dict:
 
 def calculate_debt(user_id: int) -> str:
     rewards = {
-        3: ("1. Коммуникативный 🤝", 150),
-        6: ("2. Сетевой магнит 👥", 300),
-        9: ("3. Мастер связей 🔗", 450),
-        12: ("4. Проводник 🌟", 600),
-        15: ("5. Социальная Легенда 🏆", 750),
-        20: ("6. Работорговец 💀", 1000, 1700000, "VIP-статус 💎")
+        3: ("1. Коммуникативный 🤝", 70),
+        6: ("2. Сетевой магнит 👥", 140),
+        9: ("3. Мастер связей 🔗", 200),
+        12: ("4. Проводник 🌟", 280),
+        15: ("5. Социальная Легенда 🏆", 350),
+        20: ("6. Работорговец 💀", 450, 1700000, "VIP-статус 💎")
     }
     invite_count = get_count_invited_by_inviter(user_id)
     progress = get_reward_progress(user_id)
     issued = progress["issued_milestones"]
     debt = []
-    total_rewards = [0, 0]
+    total_rewards = [0, 0, ""]
     if invite_count < 3:
         return "Долгов нет."
     for i in [3, 6, 9, 12, 15, 20]:
@@ -135,11 +135,13 @@ def calculate_debt(user_id: int) -> str:
                 debt.append(f"- {rewards[20][0]}: {rewards[20][1]}🌸; {rewards[20][2]}💰; {rewards[20][3]}\n")
                 total_rewards[0] += rewards[20][1]
                 total_rewards[1] += rewards[20][2]
-                total_rewards.append(rewards[20][3])
+                total_rewards[2] = rewards[20][3]
     extra = max(0, invite_count - 20 - progress['rewarded_extra']) * 100000
     if extra > 0:
         debt.append(f"- Доп. приглашения: {extra}💰\n")
         total_rewards[1] += extra
     if not debt:
         return "Долгов нет."
-    return f"Долг по наградам:\n" + "\n".join(debt) + f"\n\nИтого: {total_rewards[0]}🌸; {total_rewards[1]}💰; {total_rewards[2] if total_rewards[2] else ''}"
+    return (f"Долг по наградам:\n" + "\n".join(debt) +
+            f"\n\nИтого: {total_rewards[0]}🌸; {total_rewards[1]}💰" +
+            ''.join([f"; {total_rewards[2]}" if total_rewards[2] else '']))
