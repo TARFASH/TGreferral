@@ -64,7 +64,7 @@ async def get_link_handler(message: types.Message):
         )
 
 
-@dp.message(Command("my_stats"))
+@dp.message(Command("my_stats"), IsTargetChat())
 async def my_stats_handler(message: types.Message):
     inviter_user_id = message.from_user.id
     recent_invited = get_recent_invited_users_by_inviter(inviter_user_id=inviter_user_id)
@@ -80,7 +80,7 @@ async def my_stats_handler(message: types.Message):
                 f"{len(recent_invited)} recent users")
 
 
-@dp.message(Command("invites_rating"))
+@dp.message(Command("invites_rating"), IsTargetChat())
 async def invites_rating_handler(message: types.Message):
     inviters = get_top_inviters()
     result = "🔗 Топ 20 игроков по приглашениям:\n\n"
