@@ -11,8 +11,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from dotenv import load_dotenv
 
 from src.db import save_invite_link, get_invite_link_by_url, save_invited_user, get_recent_invited_users_by_inviter, \
-    get_count_invited_by_inviter, get_top_inviters, calculate_debt
-from src.filters import is_target_chat
+    get_count_invited_by_inviter, get_top_inviters, calculate_debt, mark_rewards_issued
+from src.filters import IsTargetChat, IsAdmin
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +28,7 @@ CHAT_LINK = os.getenv("CHAT_LINK")
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
+
 @dp.message(Command("start"), F.chat.type == "private")
 async def start_handler(message: types.Message):
     await message.answer(
@@ -38,10 +39,8 @@ async def start_handler(message: types.Message):
     logger.info(f'Processed /start for user @{message.from_user.username} in PM')
 
 
-@dp.message(Command("get_link"))
+@dp.message(Command("get_link"), IsTargetChat())
 async def get_link_handler(message: types.Message):
-    if not await is_target_chat(message=message):
-        return
     try:
         user_id = message.from_user.id
         username = message.from_user.username or message.from_user.first_name
@@ -64,6 +63,7 @@ async def get_link_handler(message: types.Message):
             'Не удалось создать ссылку. Убедись, что бот является администратором чата с правом "Управление ссылками"!'
         )
 
+
 @dp.message(Command("my_stats"))
 async def my_stats_handler(message: types.Message):
     inviter_user_id = message.from_user.id
@@ -74,7 +74,7 @@ async def my_stats_handler(message: types.Message):
                 f"Вы пригласили человек: {invite_count}\n"
                 f"Последние приглашённые:\n")
     for user_counter in range(len(recent_invited)):
-        response += f"{user_counter+1}. <a href='tg://openmessage?user_id={recent_invited[user_counter][0]}'>{recent_invited[user_counter][1]}</a>\n"
+        response += f"{user_counter + 1}. <a href='tg://openmessage?user_id={recent_invited[user_counter][0]}'>{recent_invited[user_counter][1]}</a>\n"
     await message.answer(response, parse_mode=ParseMode.HTML)
     logger.info(f"Processed /my_stats for user @{username} (ID: {inviter_user_id}): {invite_count} invited, "
                 f"{len(recent_invited)} recent users")
@@ -90,28 +90,12 @@ async def invites_rating_handler(message: types.Message):
                    f"- {inviters[inviter][1]}🤵🏻\n")
         count += 1
     await message.answer(result, parse_mode=ParseMode.HTML)
-    logger.info(f"Successfully processed /invites_rating. Called {message.from_user.username} (ID: {message.from_user.id}).")
+    logger.info(
+        f"Successfully processed /invites_rating. Called {message.from_user.username} (ID: {message.from_user.id}).")
 
 
-# Admin-only command to check debt as a reply
-@dp.message(Command("check_debt"), F.reply_to_message)
+@dp.message(Command("check_debt"), F.reply_to_message, IsTargetChat(), IsAdmin())
 async def check_debt_handler(message: types.Message):
-    if not await is_target_chat(message=message):
-        return
-
-    # Check if the user is an admin
-    try:
-        admins = await bot.get_chat_administrators(chat_id=CHAT_ID)
-        admin_ids = [admin.user.id for admin in admins]
-        if message.from_user.id not in admin_ids:
-            await message.answer("Эта команда доступна только администраторам чата!")
-            logger.info(f"Non-admin @{message.from_user.username} (ID: {message.from_user.id}) attempted /check_debt")
-            return
-    except aiogram.exceptions.TelegramBadRequest as e:
-        await message.answer("Ошибка: убедитесь, что бот имеет права администратора!")
-        logger.error(f"Failed to check admin status: {e}")
-        return
-
     # Get the replied-to user's ID
     target_user = message.reply_to_message.from_user
     target_user_id = target_user.id
@@ -125,6 +109,35 @@ async def check_debt_handler(message: types.Message):
     await message.answer(response, parse_mode=ParseMode.HTML)
     logger.info(f"Processed /check_debt for user @{target_username} (ID: {target_user_id}) by admin "
                 f"@{message.from_user.username} (ID: {message.from_user.id}): {invite_count} invited")
+
+
+@dp.message(Command("mark_rewards"), F.reply_to_message, IsTargetChat(), IsAdmin())
+async def mark_rewards_handler(message: types.Message):
+    # Get the replied-to user's ID
+    target_user = message.reply_to_message.from_user
+    target_user_id = target_user.id
+    target_username = target_user.username or target_user.first_name
+
+    # Mark rewards as issued
+    result = mark_rewards_issued(target_user_id)
+
+    # Prepare response
+    response = f"✅ Награды для @{target_username} (ID: {target_user_id}) отмечены как выданные:\n"
+    if result["new_milestones"]:
+        response += "\nНовые выданные достижения:\n" + "\n".join(f"- {m}" for m in result["new_milestones"])
+    if result["new_extra"] > 0:
+        response += f"\nДополнительно за приглашения: {result['new_extra']}💰"
+    if not result["new_milestones"] and result["new_extra"] == 0:
+        response += "Нет новых наград для выдачи."
+    response += f"\n\nИтого: {result['total_flower']}🌸; {result['total_money']}💰"
+    if result["vip_status"]:
+        response += f"; {result['vip_status']}"
+
+    await message.answer(response, parse_mode=ParseMode.HTML)
+    logger.info(f"Processed /mark_rewards for user @{target_username} (ID: {target_user_id}) by admin "
+                f"@{message.from_user.username} (ID: {message.from_user.id}): "
+                f"New milestones: {result['new_milestones']}, Extra: {result['new_extra']}")
+
 
 @dp.chat_member()
 async def chat_member_handler(update: types.ChatMemberUpdated):
@@ -147,6 +160,7 @@ async def chat_member_handler(update: types.ChatMemberUpdated):
 async def main():
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
